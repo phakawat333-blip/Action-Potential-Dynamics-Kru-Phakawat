@@ -1,0 +1,540 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Action Potential & Neurotoxin Simulator</title>
+    <link href="https://fonts.googleapis.com/css2?family=Kanit:wght@300;400;500;600&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --na-color: #00f3ff;
+            --k-color: #39ff14;
+            --bg-color: #05080f;
+            --panel-bg: #101623;
+            --text-main: #e2e8f0;
+            --text-muted: #94a3b8;
+            --accent: #ff007f;
+        }
+
+        * { box-sizing: border-box; font-family: 'Kanit', sans-serif; }
+
+        body { background-color: var(--bg-color); color: var(--text-main); margin: 0; padding: 20px; display: flex; flex-direction: column; align-items: center; min-height: 100vh; }
+        .header { text-align: center; margin-bottom: 15px; }
+        h1 { font-size: 2.2rem; margin: 0; background: linear-gradient(90deg, #ff007f, #7928ca, #00f3ff); -webkit-background-clip: text; -webkit-text-fill-color: transparent; font-weight: 600; }
+        p.subtitle { color: var(--text-muted); font-size: 1rem; margin-top: 5px; }
+
+        .container { width: 100%; max-width: 1000px; background: var(--panel-bg); border-radius: 20px; padding: 25px; box-shadow: 0 15px 40px rgba(0,0,0,0.8); border: 1px solid #1e293b; }
+
+        /* DASHBOARD */
+        .dashboard { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-bottom: 20px; }
+        .stat-box { background: rgba(255,255,255,0.02); border: 1px solid rgba(255,255,255,0.08); border-radius: 12px; padding: 12px; text-align: center; transition: all 0.3s ease; }
+        .stat-box.active { border-color: var(--accent); box-shadow: 0 0 15px rgba(255,0,127,0.2); background: rgba(255,0,127,0.05); }
+        .stat-title { font-size: 0.75rem; color: var(--text-muted); text-transform: uppercase; margin-bottom: 4px; }
+        .stat-value { font-size: 1.1rem; font-weight: 500; }
+
+        /* MEMBRANE VIEW */
+        .membrane-container { position: relative; height: 280px; background: radial-gradient(circle at center, #131b2e 0%, #080c14 100%); border-radius: 16px; border: 1px solid #334155; overflow: hidden; margin-bottom: 20px; }
+        .env-label { position: absolute; font-size: 0.85rem; font-weight: 500; opacity: 0.6; }
+        .ecf { top: 12px; left: 20px; color: #60a5fa; }
+        .icf { bottom: 12px; left: 20px; color: #f472b6; }
+        .lipid-bilayer { position: absolute; top: 50%; left: 0; width: 100%; height: 50px; transform: translateY(-50%); background-image: radial-gradient(circle at 10px 8px, #d35400 6px, transparent 7px), radial-gradient(circle at 10px 42px, #d35400 6px, transparent 7px); background-size: 18px 50px; background-repeat: repeat-x; z-index: 2; opacity: 0.8; }
+        .lipid-tails { position: absolute; top: 50%; left: 0; width: 100%; height: 34px; transform: translateY(-50%); background: repeating-linear-gradient(90deg, transparent, transparent 6px, #e67e22 6px, #e67e22 8px, transparent 8px, transparent 16px); opacity: 0.3; z-index: 1; }
+
+        /* CHANNELS */
+        .channel { position: absolute; top: 50%; transform: translateY(-50%); width: 75px; height: 100px; border-radius: 12px; z-index: 3; display: flex; flex-direction: column; justify-content: center; align-items: center; font-weight: 600; font-size: 0.85rem; box-shadow: inset 0 0 20px rgba(0,0,0,0.6); transition: all 0.3s; }
+        .ch-leak-na { left: 8%; background: linear-gradient(135deg, #1e3a8a, #0f172a); border: 2px dashed #3b82f6; color: #93c5fd; }
+        .ch-leak-k  { left: 26%; background: linear-gradient(135deg, #064e3b, #022c22); border: 2px dashed #10b981; color: #a7f3d0; }
+        .ch-pump    { left: 45%; background: linear-gradient(135deg, #581c87, #2e1065); border: 2px solid #a855f7; color: #f3e8ff; }
+        .ch-vg-na   { left: 66%; background: linear-gradient(180deg, #1d4ed8, #1e3a8a); border: 2px solid #60a5fa; color: #eff6ff; }
+        .ch-vg-k    { left: 84%; background: linear-gradient(180deg, #047857, #065f46); border: 2px solid #34d399; color: #ecfdf5; }
+        .ch-label { font-size: 0.65rem; opacity: 0.8; margin-top: 2px; text-align: center; line-height: 1.1; }
+
+        /* GATES & TOXIN BLOCKERS */
+        .gate { position: absolute; width: 100%; height: 12px; background: #0f172a; border: 2px solid #475569; transition: transform 0.4s; }
+        .gate-top { top: -12px; transform-origin: top; }
+        .channel.closed .gate-top { transform: scaleY(1); }
+        .channel.open .gate-top { transform: scaleY(0); }
+        .channel.half-open .gate-top { transform: scaleY(0.7); background: #3b82f6; } 
+        
+        .inactivation-chain { position: absolute; bottom: -20px; left: 50%; width: 2px; height: 15px; background: #f87171; border-left: 1px dashed #fff; transform: translateX(-50%); transition: all 0.2s; opacity: 0.6; z-index: 10; }
+        .inactivation-ball { position: absolute; bottom: -35px; width: 24px; height: 24px; background: #ef4444; border-radius: 50%; border: 2px solid #fca5a5; transition: all 0.2s; box-shadow: 0 0 15px rgba(239, 68, 68, 0.9); z-index: 11; display: flex; align-items: center; justify-content: center; }
+        .inactivation-ball::after { content: 'Gate'; font-size: 7px; color: #fff; font-weight: bold; }
+        .ch-vg-na.inactivated .inactivation-ball { bottom: 5px; transform: scale(1.1); }
+        .ch-vg-na.inactivated .inactivation-chain { height: 0px; bottom: 5px; }
+
+        /* TOXIN VISUALS */
+        .toxin-blocker { position: absolute; font-size: 0.75rem; padding: 2px 6px; border-radius: 6px; font-weight: bold; color: #000; opacity: 0; transition: 0.4s; z-index: 15; transform: scale(0); box-shadow: 0 0 15px currentColor; }
+        .toxin-active .toxin-blocker { opacity: 1; transform: scale(1); }
+        .blocker-ttx { top: -25px; background: #fbbf24; color: #000; } /* อุดด้านนอก Na+ */
+        .blocker-tea { top: -25px; background: #f472b6; color: #000; } /* อุดด้านนอก K+ */
+        .blocker-la { bottom: -25px; background: #a78bfa; color: #000; } /* อุดด้านใน Na+ */
+
+        /* PARTICLES */
+        .ion-particle { position: absolute; width: 14px; height: 14px; border-radius: 50%; font-size: 8px; font-weight: bold; display: flex; align-items: center; justify-content: center; color: #000; z-index: 5; }
+        .p-na { background: var(--na-color); box-shadow: 0 0 8px var(--na-color); }
+        .p-k { background: var(--k-color); box-shadow: 0 0 8px var(--k-color); }
+
+        @keyframes leakDown { 0% { top: 10%; opacity: 0; } 20% { opacity: 1; } 80% { opacity: 1; } 100% { top: 85%; opacity: 0; } }
+        @keyframes leakUp { 0% { top: 85%; opacity: 0; } 20% { opacity: 1; } 80% { opacity: 1; } 100% { top: 10%; opacity: 0; } }
+        @keyframes pumpNaOut { 0% { top: 75%; left: calc(45% + 20px); opacity: 0; transform: scale(0.5); } 30% { top: 50%; left: calc(45% + 20px); opacity: 1; transform: scale(1); } 70% { top: 50%; left: calc(45% + 20px); opacity: 1; transform: scale(1); } 100% { top: 10%; left: calc(45% + 20px); opacity: 0; transform: scale(0.5); } }
+        @keyframes pumpKIn { 0% { top: 10%; left: calc(45% + 40px); opacity: 0; transform: scale(0.5); } 30% { top: 50%; left: calc(45% + 40px); opacity: 1; transform: scale(1); } 70% { top: 50%; left: calc(45% + 40px); opacity: 1; transform: scale(1); } 100% { top: 75%; left: calc(45% + 40px); opacity: 0; transform: scale(0.5); } }
+
+        .an-leak-na { left: calc(8% + 30px); animation: leakDown 2.5s linear infinite; }
+        .an-leak-k1 { left: calc(26% + 30px); animation: leakUp 1.8s linear infinite; }
+        .an-pump-na1 { animation: pumpNaOut 3s infinite ease-in-out; }
+        .an-pump-na2 { animation: pumpNaOut 3s infinite ease-in-out; animation-delay: 0.2s; }
+        .an-pump-na3 { animation: pumpNaOut 3s infinite ease-in-out; animation-delay: 0.4s; }
+        .an-pump-k1 { animation: pumpKIn 3s infinite ease-in-out; animation-delay: 1.5s; }
+        .an-pump-k2 { animation: pumpKIn 3s infinite ease-in-out; animation-delay: 1.7s; }
+        
+        .an-vg-na { left: calc(66% + 30px); opacity: 0; }
+        .an-vg-k { left: calc(84% + 30px); opacity: 0; }
+        .flow-in { animation: leakDown 0.6s linear infinite; }
+        .flow-out { animation: leakUp 0.6s linear infinite; }
+
+        /* CONTROLS & STIMULUS */
+        .control-panel { display: flex; flex-direction: column; gap: 15px; margin-bottom: 15px; background: #0f1624; padding: 15px; border-radius: 12px; border: 1px solid #1e293b; }
+        .control-row { display: flex; flex-wrap: wrap; gap: 15px; align-items: center; justify-content: space-between; width: 100%; }
+        
+        /* TOXIN SELECTOR */
+        .toxin-box { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; background: rgba(0,0,0,0.3); padding: 8px 12px; border-radius: 8px; border: 1px dashed #ef4444; width: 100%; }
+        .toxin-box span { font-size: 0.9rem; color: #ef4444; font-weight: 600; display: flex; align-items: center; gap: 5px;}
+        
+        .radio-btn { display: none; }
+        .radio-label { padding: 5px 12px; font-size: 0.85rem; cursor: pointer; border-radius: 6px; border: 1px solid #475569; transition: all 0.2s; color: #94a3b8; }
+        .radio-btn:checked + .radio-label.success { background: #10b981; border-color: #10b981; color: white; }
+        .radio-btn:checked + .radio-label.fail { background: #6366f1; border-color: #818cf8; color: white; }
+        
+        /* Toxin specific colors */
+        .radio-btn:checked + .radio-label.tox-ttx { background: #fbbf24; border-color: #fbbf24; color: #000; box-shadow: 0 0 10px rgba(251,191,36,0.4); }
+        .radio-btn:checked + .radio-label.tox-tea { background: #f472b6; border-color: #f472b6; color: #000; box-shadow: 0 0 10px rgba(244,114,182,0.4); }
+        .radio-btn:checked + .radio-label.tox-la { background: #a78bfa; border-color: #a78bfa; color: #000; box-shadow: 0 0 10px rgba(167,139,250,0.4); }
+
+        .btn-group { display: flex; gap: 10px; align-items: center;}
+        button { background: linear-gradient(135deg, #10b981, #059669); border: none; color: white; padding: 8px 16px; border-radius: 8px; font-size: 0.95rem; font-weight: 600; cursor: pointer; transition: all 0.2s; }
+        button:hover { transform: translateY(-2px); box-shadow: 0 4px 15px rgba(16,185,129,0.4); }
+        button.btn-sec { background: #1e293b; border: 1px solid #334155; box-shadow: none;}
+        button.btn-sec:hover { background: #334155; }
+        button.btn-active { background: #3b82f6; box-shadow: 0 4px 15px rgba(59,130,246,0.4); }
+        .speed-control { display: flex; align-items: center; gap: 10px; color: var(--text-muted); font-size: 0.9rem;}
+        .speed-control input { width: 80px; }
+
+        /* GRAPH VIEW */
+        .graph-container { position: relative; height: 250px; background: #090d16; border-radius: 12px; border: 1px solid #1e293b; padding: 10px 10px 20px 10px; margin-bottom: 15px; }
+        svg { width: 100%; height: 100%; overflow: visible; }
+        .grid-line { stroke: #1e293b; stroke-width: 1; }
+        .axis-label { fill: #64748b; font-size: 11px; }
+        .ap-path { fill: none; stroke: var(--accent); stroke-width: 4; stroke-linejoin: round; filter: drop-shadow(0 0 8px var(--accent)); transition: d 0.4s cubic-bezier(0.4, 0, 0.2, 1); clip-path: url(#draw-clip); }
+        .scrubber-line { stroke: #fbbf24; stroke-width: 1.5; stroke-dasharray: 4,4; }
+        .scrubber-dot { fill: #fff; stroke: #fbbf24; stroke-width: 3; filter: drop-shadow(0 0 6px #fbbf24); cursor: pointer; }
+
+        /* PHASE ZONES (SHADING) */
+        .zone-repol { fill: rgba(239, 68, 68, 0.1); opacity: 0; transition: opacity 0.3s; }
+        .zone-hyper { fill: rgba(251, 191, 36, 0.1); opacity: 0; transition: opacity 0.3s; }
+        .zone-label { fill: #fff; font-size: 10px; opacity: 0; font-weight: bold; transition: opacity 0.3s; }
+        .zone-active .zone-repol, .zone-active .zone-hyper, .zone-active .zone-label { opacity: 1; }
+
+        /* TOOLTIP */
+        .graph-tooltip { position: absolute; background: rgba(16, 22, 35, 0.95); border: 1px solid #fbbf24; color: #fff; padding: 6px 12px; border-radius: 6px; font-size: 0.85rem; pointer-events: none; opacity: 0; transition: opacity 0.2s; box-shadow: 0 4px 10px rgba(0,0,0,0.5); z-index: 10; text-align: center; transform: translate(-50%, -120%); white-space: nowrap; }
+        .graph-tooltip.show { opacity: 1; }
+        .graph-tooltip span { display: block; font-weight: bold; font-size: 1rem; margin-top: 2px;}
+
+        /* SLIDER */
+        input[type=range].timeline-slider { -webkit-appearance: none; width: 100%; background: transparent; display: block; margin: 10px 0; }
+        input[type=range].timeline-slider::-webkit-slider-runnable-track { width: 100%; height: 8px; background: #1e293b; border-radius: 4px; cursor: pointer; }
+        input[type=range].timeline-slider::-webkit-slider-thumb { height: 24px; width: 24px; border-radius: 50%; background: #fbbf24; cursor: pointer; -webkit-appearance: none; margin-top: -8px; box-shadow: 0 0 15px rgba(251,191,36,0.6); }
+
+        /* INFO PANEL */
+        .info-panel { background: rgba(16, 185, 129, 0.05); border-left: 4px solid #10b981; padding: 15px 20px; border-radius: 8px; margin-top: 10px; min-height: 100px; transition: all 0.3s; }
+        .info-title { font-size: 1.1rem; font-weight: 600; margin-bottom: 8px; color: #10b981; display: flex; align-items: center; gap: 8px;}
+        .info-desc { font-size: 0.95rem; color: #cbd5e1; line-height: 1.5; }
+        .info-desc span { color: #fbbf24; font-weight: 500;}
+
+        .footer { text-align: center; font-size: 0.85rem; color: var(--text-muted); margin-top: 20px; padding-top: 15px; border-top: 1px solid #1e293b; }
+        .footer b { color: #c084fc; }
+    </style>
+</head>
+<body>
+
+    <div class="header">
+        <h1>Action Potential Dynamics</h1>
+        <p class="subtitle">จำลองกฎ All-or-None และประเด็น SSI จากระบบจำลองสารพิษ (Neurotoxin Simulator)</p>
+    </div>
+
+    <div class="container">
+        <div class="dashboard">
+            <div class="stat-box" id="box-phase">
+                <div class="stat-title">ระยะ (Phase)</div>
+                <div class="stat-value" id="val-phase" style="color: #c084fc;">Resting State</div>
+            </div>
+            <div class="stat-box">
+                <div class="stat-title">ความต่างศักย์</div>
+                <div class="stat-value" id="val-mv" style="color: #fbbf24;">-70 mV</div>
+            </div>
+            <div class="stat-box" id="box-na">
+                <div class="stat-title">VG Na+ Channel</div>
+                <div class="stat-value" id="val-na" style="color: var(--text-muted);">ปิด</div>
+            </div>
+            <div class="stat-box" id="box-k">
+                <div class="stat-title">VG K+ Channel</div>
+                <div class="stat-value" id="val-k" style="color: var(--text-muted);">ปิด</div>
+            </div>
+        </div>
+
+        <div class="membrane-container">
+            <div class="env-label ecf">ภายนอกเซลล์ (ECF) — [Na+] สูง</div>
+            <div class="env-label icf">ภายในเซลล์ (ICF) — [K+] สูง</div>
+            <div class="lipid-bilayer"></div><div class="lipid-tails"></div>
+
+            <div class="channel ch-leak-na">Na+<div class="ch-label">Leak</div></div>
+            <div class="ion-particle p-na an-leak-na">Na+</div>
+            <div class="channel ch-leak-k">K+<div class="ch-label">Leak</div></div>
+            <div class="ion-particle p-k an-leak-k1">K+</div>
+            <div class="channel ch-pump">Na+/K+<div class="ch-label">Pump</div></div>
+            <div class="ion-particle p-na an-pump-na1">Na+</div><div class="ion-particle p-na an-pump-na2">Na+</div><div class="ion-particle p-na an-pump-na3">Na+</div>
+            <div class="ion-particle p-k an-pump-k1">K+</div><div class="ion-particle p-k an-pump-k2">K+</div>
+
+            <div id="ch-vg-na" class="channel ch-vg-na closed">
+                <div class="gate gate-top"></div>Na+<div class="ch-label">VG-Channel</div>
+                <div class="inactivation-chain"></div><div class="inactivation-ball"></div>
+                <div class="toxin-blocker blocker-ttx">TTX</div>
+                <div class="toxin-blocker blocker-la">LA</div>
+            </div>
+            <div id="p-vg-na1" class="ion-particle p-na an-vg-na">Na+</div>
+            <div id="p-vg-na2" class="ion-particle p-na an-vg-na" style="animation-delay: 0.3s;">Na+</div>
+
+            <div id="ch-vg-k" class="channel ch-vg-k closed">
+                <div class="gate gate-top"></div>K+<div class="ch-label">VG-Channel</div>
+                <div class="toxin-blocker blocker-tea">TEA</div>
+            </div>
+            <div id="p-vg-k1" class="ion-particle p-k an-vg-k">K+</div>
+            <div id="p-vg-k2" class="ion-particle p-k an-vg-k" style="animation-delay: 0.3s;">K+</div>
+        </div>
+
+        <div class="control-panel">
+            <div class="toxin-box">
+                <span>☣️ สารเคมี / ยา (Neurotoxins):</span>
+                <input type="radio" name="toxin" id="tox-none" class="radio-btn" value="none" checked>
+                <label for="tox-none" class="radio-label success">สภาวะปกติ (Normal)</label>
+                
+                <input type="radio" name="toxin" id="tox-ttx" class="radio-btn" value="ttx">
+                <label for="tox-ttx" class="radio-label tox-ttx">พิษปลาปักเป้า (TTX)</label>
+
+                <input type="radio" name="toxin" id="tox-tea" class="radio-btn" value="tea">
+                <label for="tox-tea" class="radio-label tox-tea">TEA</label>
+
+                <input type="radio" name="toxin" id="tox-la" class="radio-btn" value="la">
+                <label for="tox-la" class="radio-label tox-la">ยาชาเฉพาะที่ (Lidocaine)</label>
+            </div>
+
+            <div class="control-row">
+                <div style="display: flex; gap: 10px; align-items: center; background: rgba(0,0,0,0.3); padding: 5px 10px; border-radius: 8px; border: 1px solid #334155;">
+                    <span style="font-size: 0.9rem; color: #cbd5e1; font-weight: 500;">⚡ กระตุ้น:</span>
+                    <input type="radio" name="stim" id="stim-sub" class="radio-btn">
+                    <label for="stim-sub" class="radio-label fail">เบา (Sub)</label>
+                    <input type="radio" name="stim" id="stim-full" class="radio-btn" checked>
+                    <label for="stim-full" class="radio-label success">แรง (Threshold)</label>
+                </div>
+                <div class="btn-group">
+                    <button id="btn-play">▶ เล่นอัตโนมัติ</button>
+                    <button id="btn-sound" class="btn-sec">🔇 เสียง</button>
+                </div>
+                <div class="speed-control">
+                    <label for="speed-slider">ความเร็ว:</label>
+                    <input type="range" id="speed-slider" min="0.2" max="3" value="1" step="0.1">
+                    <span id="speed-val">1.0x</span>
+                </div>
+            </div>
+        </div>
+
+        <div class="graph-container" id="graph-area">
+            <div id="tooltip" class="graph-tooltip">ระยะ<br><span id="tt-mv">0 mV</span></div>
+            <svg viewBox="0 0 1000 240" preserveAspectRatio="none" id="svg-graph">
+                <defs><clipPath id="draw-clip"><rect id="clip-rect" x="0" y="-50" width="50" height="340"></rect></clipPath></defs>
+                <g id="phase-zones" class="zone-active">
+                    <rect x="400" y="20" width="150" height="200" class="zone-repol"></rect>
+                    <text x="475" y="15" class="zone-label" fill="#f87171" text-anchor="middle">Repolarization</text>
+                    <rect x="550" y="20" width="230" height="200" class="zone-hyper"></rect>
+                    <text x="665" y="15" class="zone-label" fill="#fbbf24" text-anchor="middle">Hyperpolarization</text>
+                </g>
+                <line x1="50" y1="30" x2="950" y2="30" class="grid-line" stroke-dasharray="2,4"/>
+                <text x="10" y="34" class="axis-label">+30</text>
+                <line x1="50" y1="125" x2="950" y2="125" class="grid-line" stroke-dasharray="2,4"/>
+                <text x="10" y="129" class="axis-label">-55 (Threshold)</text>
+                <line x1="50" y1="145" x2="950" y2="145" class="grid-line"/>
+                <text x="10" y="149" class="axis-label">-70 (Resting)</text>
+                <line x1="50" y1="175" x2="950" y2="175" class="grid-line" stroke-dasharray="2,4"/>
+                <text x="10" y="179" class="axis-label">-90</text>
+                <g id="stimulus-marker" transform="translate(250, 185)">
+                    <path d="M 0,-15 L -6,0 L -1,0 L -3,15 L 6,-2 L 1,-2 Z" fill="#fbbf24" stroke="#d97706" stroke-width="1"/>
+                    <text x="0" y="25" fill="#fbbf24" font-size="10" text-anchor="middle" font-weight="bold">Stimulus</text>
+                </g>
+                <path id="ap-curve" class="ap-path" d="" />
+                <line id="scrub-line" x1="50" y1="10" x2="50" y2="210" class="scrubber-line"/>
+                <circle id="scrub-dot" cx="50" cy="145" r="7" class="scrubber-dot"/>
+            </svg>
+        </div>
+        <input type="range" id="timeline" class="timeline-slider" min="50" max="950" value="50" step="1">
+
+        <div id="info-panel" class="info-panel">
+            <div id="info-title" class="info-title">Resting State</div>
+            <div id="info-desc" class="info-desc">ศักย์ไฟฟ้าอยู่ที่ <span>-70 mV</span> ช่อง Voltage-gated Na+ และ K+ ปิดสนิท แต่กลไก Na+/K+ Pump และ Leak Channels ยังคงทำงานเพื่อรักษาสมดุลความเข้มข้นของไอออน รอรับการกระตุ้น</div>
+        </div>
+    </div>
+
+    <div class="footer">
+        <p>พัฒนาสื่อการสอนโดย <b>ครูภควัต สองเมือง (Kru Phakawat Songmuang)</b> | Phakawat333@gmail.com</p>
+    </div>
+
+    <script>
+        const slider = document.getElementById('timeline');
+        const scrubLine = document.getElementById('scrub-line');
+        const scrubDot = document.getElementById('scrub-dot');
+        const clipRect = document.getElementById('clip-rect'); 
+        const apCurve = document.getElementById('ap-curve');
+        const tooltip = document.getElementById('tooltip');
+        const phaseZones = document.getElementById('phase-zones');
+        
+        const chVgNa = document.getElementById('ch-vg-na'), chVgK = document.getElementById('ch-vg-k');
+        const pVgNa1 = document.getElementById('p-vg-na1'), pVgNa2 = document.getElementById('p-vg-na2');
+        const pVgK1 = document.getElementById('p-vg-k1'), pVgK2 = document.getElementById('p-vg-k2');
+        const valPhase = document.getElementById('val-phase'), valMv = document.getElementById('val-mv');
+        const valNa = document.getElementById('val-na'), valK = document.getElementById('val-k');
+        const infoPanel = document.getElementById('info-panel'), infoTitle = document.getElementById('info-title'), infoDesc = document.getElementById('info-desc');
+        const boxPhase = document.getElementById('box-phase');
+        
+        const btnPlay = document.getElementById('btn-play'), btnSound = document.getElementById('btn-sound');
+        const speedSlider = document.getElementById('speed-slider'), speedVal = document.getElementById('speed-val');
+        const graphArea = document.getElementById('graph-area');
+
+        const radioSub = document.getElementById('stim-sub'), radioFull = document.getElementById('stim-full');
+        const toxinRadios = document.querySelectorAll('input[name="toxin"]');
+
+        let isPlaying = false, animId, audioCtx, osc, gainNode, isSoundOn = false;
+        let stimMode = 'full'; 
+        let toxinMode = 'none';
+
+        // Paths Definitions
+        const paths = {
+            full: "M 50,145 L 250,145 C 285,145 295,125 315,80 L 380,30 C 405,0 435,40 484,110 L 550,168 C 610,185 710,145 820,145 L 950,145",
+            sub: "M 50,145 L 250,145 C 260,145 270,135 285,135 C 310,135 320,145 400,145 L 950,145",
+            ttx: "M 50,145 L 950,145", // Flatline (Blocked Na+)
+            tea: "M 50,145 L 250,145 C 285,145 295,125 315,80 L 380,30 C 450,40 550,55 950,55", // Stays depolarized (Blocked K+)
+            la: "M 50,145 L 250,145 C 260,145 270,140 280,140 L 950,140" // Flatline / Slight bump (Inner block Na+)
+        };
+
+        const phaseInfoFull = {
+            resting: { title: "Resting State", color: "#c084fc", desc: "ศักย์ไฟฟ้าอยู่ที่ <span>-70 mV</span> ประตูไวแรงดัน (VG-Channels) ปิดสนิท เซลล์ประสาทพร้อมรับการกระตุ้น" },
+            depolarization: { title: "Depolarization", color: "#38bdf8", desc: "กระตุ้นแรงถึง Threshold (-55 mV) <span>ประตู Na+ จะเปิดออกเต็มที่ทันที</span> ทำให้ Na+ ทะลักเข้าเซลล์ ศักย์ไฟฟ้าพุ่งขึ้นอย่างรวดเร็ว (กฎ All-or-None)" },
+            peak: { title: "Action Potential (Peak)", color: "#ff007f", desc: "ศักย์ไฟฟ้าขึ้นถึงจุดสูงสุด <span>(ประมาณ +30 mV)</span> <span>ก้อนแดง (Inactivation Gate) เตรียมดีดตัวอุดกั้นรูท่อ</span>" },
+            repolarization: { title: "Repolarization", color: "#f87171", desc: "<span>ก้อนแดงอุดกั้นช่อง Na+ สนิท (Inactivated)</span> ขณะเดียวกัน <span>ประตู K+ เปิดเต็มที่</span> K+ จึงไหลออกนอกเซลล์ ศักย์ไฟฟ้าตกลงอย่างรวดเร็วกลับสู่ขั้วลบ" },
+            undershoot: { title: "Hyperpolarization / Undershoot", color: "#fbbf24", desc: "เนื่องจาก <span>ประตู K+ ปิดช้ามาก</span> K+ จึงไหลออกมากเกินไป ศักย์ไฟฟ้าดิ่งลึกลงกว่าระยะพัก <span>(ประมาณ -90 mV)</span> จากนั้นก้อนแดงปลดล็อค ประตู K+ ปิดสนิทรอ Pump ดึงกลับสมดุล" }
+        };
+
+        const phaseInfoSub = {
+            resting: { title: "Resting State", color: "#c084fc", desc: "ศักย์ไฟฟ้าอยู่ที่ <span>-70 mV</span> รอรับการกระตุ้น" },
+            failed: { title: "Graded Potential", color: "#818cf8", desc: "ถูกกระตุ้นเบาเกินไป ไม่ถึง Threshold (-55 mV) <span>ประตู Na+ แง้มเปิดเพียงเล็กน้อย แล้วปิดลง</span> <b>ไม่เกิด Action Potential</b> ตามกฎ All-or-None" }
+        };
+
+        const toxinInfo = {
+            ttx: { title: "☣️ สารพิษ TTX (Tetrodotoxin)", color: "#fbbf24", desc: "<b>พิษจากปลาปักเป้า</b> เข้าไปอุดกั้นช่อง Voltage-gated Na+ จากด้านนอกเซลล์ ทำให้ Na+ ไหลเข้าไม่ได้เด็ดขาด <span>กราฟจึงราบเรียบ ไม่เกิด Action Potential</span> ส่งผลให้กล้ามเนื้อเป็นอัมพาตและเสียชีวิต (ประเด็น SSI: ความปลอดภัยทางอาหาร)" },
+            tea: { title: "☣️ สารเคมี TEA (Tetraethylammonium)", color: "#f472b6", desc: "สาร TEA เข้าอุดกั้นช่อง Voltage-gated K+ ทำให้เมื่อเซลล์เกิดการ Depolarization ไปแล้ว <span>จะไม่สามารถดึงโพแทสเซียมออกเพื่อทำ Repolarization กลับสู่สมดุลได้ (กราฟค้างค่าบวก)</span> ระบบประสาทจึงรวนและทำงานล้มเหลว" },
+            la: { title: "☣️ ยาชาเฉพาะที่ (Local Anesthetics)", color: "#a78bfa", desc: "ยาชาอย่าง Lidocaine ซึมผ่านเยื่อหุ้มเซลล์และ <span>เข้าไปบล็อคประตูด้านในของช่อง Na+</span> ป้องกันไม่ให้ Na+ ไหลเข้าแม้จะถูกกระตุ้นอย่างแรง สัญญาณความเจ็บปวดจึงถูกตัดขาดและส่งไปไม่ถึงสมอง (ประเด็น SSI: การประยุกต์ใช้ยาทางการแพทย์)" }
+        };
+
+        function switchState() {
+            stimMode = radioFull.checked ? 'full' : 'sub';
+            toxinMode = document.querySelector('input[name="toxin"]:checked').value;
+            
+            // Visual Classes for Blockers
+            chVgNa.classList.remove('toxin-active');
+            chVgK.classList.remove('toxin-active');
+            if(toxinMode === 'ttx' || toxinMode === 'la') chVgNa.classList.add('toxin-active');
+            if(toxinMode === 'tea') chVgK.classList.add('toxin-active');
+            
+            // Hide specific blockers based on selection
+            document.querySelector('.blocker-ttx').style.display = (toxinMode==='ttx') ? 'block' : 'none';
+            document.querySelector('.blocker-la').style.display = (toxinMode==='la') ? 'block' : 'none';
+            
+            // Determine Path
+            let selectedPath;
+            if (toxinMode === 'ttx') {
+                selectedPath = paths.ttx; apCurve.style.stroke = '#fbbf24'; phaseZones.classList.remove('zone-active');
+            } else if (toxinMode === 'tea') {
+                selectedPath = (stimMode === 'full') ? paths.tea : paths.sub; 
+                apCurve.style.stroke = (stimMode === 'full') ? '#f472b6' : '#818cf8'; 
+                if(stimMode === 'full') phaseZones.classList.remove('zone-active');
+            } else if (toxinMode === 'la') {
+                selectedPath = paths.la; apCurve.style.stroke = '#a78bfa'; phaseZones.classList.remove('zone-active');
+            } else { // Normal
+                selectedPath = (stimMode === 'full') ? paths.full : paths.sub;
+                apCurve.style.stroke = (stimMode === 'full') ? '#ff007f' : '#818cf8';
+                if(stimMode === 'full') phaseZones.classList.add('zone-active'); else phaseZones.classList.remove('zone-active');
+            }
+            
+            apCurve.style.filter = `drop-shadow(0 0 8px ${apCurve.style.stroke})`;
+            apCurve.setAttribute('d', selectedPath);
+            
+            slider.value = 50; 
+            if(isPlaying) {
+                isPlaying = false; btnPlay.innerHTML = '▶ เล่นอัตโนมัติ';
+                btnPlay.style.background = 'linear-gradient(135deg, #10b981, #059669)'; cancelAnimationFrame(animId);
+            }
+            updateUI();
+        }
+
+        radioSub.addEventListener('change', switchState);
+        radioFull.addEventListener('change', switchState);
+        toxinRadios.forEach(r => r.addEventListener('change', switchState));
+
+        function getYfromX(targetX) {
+            let start = 0, end = apCurve.getTotalLength(), point;
+            for (let i = 0; i < 15; i++) {
+                let mid = (start + end) / 2;
+                point = apCurve.getPointAtLength(mid);
+                if (point.x > targetX) end = mid; else start = mid;
+            }
+            return point.y;
+        }
+
+        function updateUI() {
+            let x = parseFloat(slider.value);
+            let y = getYfromX(x);
+            let mv = Math.round(30 - ((y - 30) * 100 / 115));
+
+            scrubLine.setAttribute('x1', x); scrubLine.setAttribute('x2', x);
+            scrubDot.setAttribute('cx', x); scrubDot.setAttribute('cy', y);
+            clipRect.setAttribute('width', x);
+            valMv.textContent = `${mv > 0 ? '+' : ''}${mv} mV`;
+
+            let svgWidth = graphArea.querySelector('svg').clientWidth;
+            let ratio = svgWidth / 1000;
+            tooltip.style.left = `calc(${x * ratio}px + 10px)`;
+            tooltip.style.top = `calc(${y * (graphArea.clientHeight / 240)}px - 10px)`;
+            tooltip.innerHTML = `<span>${mv > 0 ? '+' : ''}${mv} mV</span>`;
+
+            // Reset Channels
+            chVgNa.className = 'channel ch-vg-na'; chVgK.className = 'channel ch-vg-k';
+            if(toxinMode === 'ttx' || toxinMode === 'la') chVgNa.classList.add('toxin-active');
+            if(toxinMode === 'tea') chVgK.classList.add('toxin-active');
+
+            pVgNa1.className = 'ion-particle p-na an-vg-na'; pVgNa2.className = 'ion-particle p-na an-vg-na';
+            pVgK1.className = 'ion-particle p-k an-vg-k'; pVgK2.className = 'ion-particle p-k an-vg-k';
+            boxPhase.className = 'stat-box';
+
+            let phaseKey = '';
+            let shortPhase = '';
+            
+            // Logic Overrides based on Toxin
+            if (toxinMode === 'ttx' || toxinMode === 'la') {
+                phaseKey = 'toxin'; shortPhase = (toxinMode==='ttx')?'TTX Blocked':'LA Blocked';
+                chVgNa.classList.add('closed'); chVgK.classList.add('closed');
+                valNa.innerHTML = 'ถูกอุดกั้น (Blocked)'; valNa.style.color = (toxinMode==='ttx')?'#fbbf24':'#a78bfa';
+                valK.innerHTML = 'ปิด';
+            } 
+            else if (toxinMode === 'tea' && stimMode === 'full') {
+                if (x < 250) { phaseKey = 'resting'; shortPhase = 'Resting'; chVgNa.classList.add('closed'); chVgK.classList.add('closed'); valNa.innerHTML = 'ปิด'; valK.innerHTML = 'ปิด';}
+                else if (x >= 250 && x < 360) { phaseKey = 'depolarization'; shortPhase = 'Depolarization'; chVgNa.classList.add('open'); chVgK.classList.add('closed'); valNa.innerHTML = 'เปิด'; valNa.style.color = '#38bdf8'; valK.innerHTML = 'ปิด'; pVgNa1.classList.add('flow-in'); pVgNa2.classList.add('flow-in'); }
+                else { phaseKey = 'toxin'; shortPhase = 'Repolarization Failed'; chVgNa.classList.add('inactivated'); chVgK.classList.add('closed'); valNa.innerHTML = 'อุดกั้น'; valK.innerHTML = 'ถูกอุดกั้น (Blocked)'; valK.style.color = '#f472b6'; }
+            }
+            else {
+                // Normal or Sub Logic
+                if(stimMode === 'full') {
+                    if (x < 250) { phaseKey = 'resting'; shortPhase = 'Resting State'; chVgNa.classList.add('closed'); chVgK.classList.add('closed'); valNa.innerHTML = 'ปิด'; valK.innerHTML = 'ปิด'; }
+                    else if (x >= 250 && x < 360) { phaseKey = 'depolarization'; shortPhase = 'Depolarization'; chVgNa.classList.add('open'); chVgK.classList.add('closed'); valNa.innerHTML = 'เปิด<br><small>(Na+ เข้า)</small>'; valNa.style.color = '#38bdf8'; valK.innerHTML = 'ปิด'; pVgNa1.classList.add('flow-in'); pVgNa2.classList.add('flow-in'); }
+                    else if (x >= 360 && x < 400) { phaseKey = 'peak'; shortPhase = 'Action Potential'; chVgNa.classList.add('open'); chVgK.classList.add('closed'); valNa.innerHTML = 'เปิดกว้างสุด'; valNa.style.color = '#ff007f'; valK.innerHTML = 'เริ่มเปิด'; pVgNa1.classList.add('flow-in'); }
+                    else if (x >= 400 && x < 550) { phaseKey = 'repolarization'; shortPhase = 'Repolarization'; chVgNa.classList.add('inactivated'); chVgK.classList.add('open'); valNa.innerHTML = 'ก้อนแดงอุดกั้น'; valNa.style.color = '#f87171'; valK.innerHTML = 'เปิด<br><small>(K+ ออก)</small>'; valK.style.color = '#34d399'; pVgK1.classList.add('flow-out'); pVgK2.classList.add('flow-out'); }
+                    else if (x >= 550 && x < 780) { phaseKey = 'undershoot'; shortPhase = 'Undershoot'; chVgNa.classList.add('closed'); chVgK.classList.add('closed'); valNa.innerHTML = 'ปิด'; valK.innerHTML = 'ปิดสนิท'; valK.style.color = '#fbbf24'; }
+                    else { phaseKey = 'resting'; shortPhase = 'Resting State'; chVgNa.classList.add('closed'); chVgK.classList.add('closed'); valNa.innerHTML = 'ปิด'; valK.innerHTML = 'ปิด'; }
+                } else {
+                    if (x < 250) { phaseKey = 'resting'; shortPhase = 'Resting State'; chVgNa.classList.add('closed'); chVgK.classList.add('closed'); valNa.innerHTML = 'ปิด'; valK.innerHTML = 'ปิด'; }
+                    else if (x >= 250 && x < 350) { phaseKey = 'failed'; shortPhase = 'Graded Potential'; chVgNa.classList.add('half-open'); chVgK.classList.add('closed'); valNa.innerHTML = 'เปิดเล็กน้อย'; valNa.style.color = '#818cf8'; valK.innerHTML = 'ปิด'; }
+                    else { phaseKey = 'resting'; shortPhase = 'Resting State'; chVgNa.classList.add('closed'); chVgK.classList.add('closed'); valNa.innerHTML = 'ปิด'; valK.innerHTML = 'ปิด'; }
+                }
+            }
+
+            tooltip.innerHTML = `${shortPhase}<span>${mv > 0 ? '+' : ''}${mv} mV</span>`;
+
+            // Update Info Panel
+            let activeInfo;
+            if(phaseKey === 'toxin') activeInfo = toxinInfo[toxinMode];
+            else if(stimMode === 'full') activeInfo = phaseInfoFull[phaseKey];
+            else activeInfo = phaseInfoSub[phaseKey];
+
+            if(infoTitle.innerText !== activeInfo.title) {
+                valPhase.textContent = activeInfo.title.split(' ')[0];
+                valPhase.style.color = activeInfo.color;
+                boxPhase.style.borderColor = activeInfo.color;
+                boxPhase.style.boxShadow = `0 0 15px ${activeInfo.color}33`;
+                
+                infoPanel.style.borderLeftColor = activeInfo.color;
+                infoPanel.style.backgroundColor = `${activeInfo.color}15`; 
+                infoTitle.innerHTML = activeInfo.title;
+                infoTitle.style.color = activeInfo.color;
+                infoDesc.innerHTML = activeInfo.desc;
+                tooltip.style.borderColor = activeInfo.color;
+                tooltip.style.color = activeInfo.color;
+            }
+
+            // Audio Synthesis
+            if (isSoundOn && osc) {
+                let targetFreq = 200 + ((mv + 90) * 3);
+                osc.frequency.setTargetAtTime(targetFreq, audioCtx.currentTime, 0.05);
+                let vol = 0.01;
+                if(toxinMode === 'ttx' || toxinMode === 'la') vol = 0.005;
+                else if(stimMode === 'full') vol = (phaseKey === 'resting') ? 0.01 : (phaseKey === 'peak') ? 0.04 : 0.02;
+                else vol = (phaseKey === 'failed') ? 0.02 : 0.01;
+                gainNode.gain.setTargetAtTime(vol, audioCtx.currentTime, 0.1);
+            }
+        }
+
+        slider.addEventListener('input', () => { if(!isPlaying) updateUI(); tooltip.classList.add('show'); });
+        slider.addEventListener('change', () => { if(!isPlaying) tooltip.classList.remove('show'); });
+        graphArea.addEventListener('mouseenter', () => tooltip.classList.add('show'));
+        graphArea.addEventListener('mouseleave', () => { if(!isPlaying) tooltip.classList.remove('show'); });
+
+        function autoPlayLoop() {
+            if (!isPlaying) return;
+            let currentX = parseFloat(slider.value);
+            let speed = parseFloat(speedSlider.value) * 2.5;
+            currentX += speed;
+            if (currentX >= 950) currentX = 50;
+            slider.value = currentX;
+            updateUI();
+            tooltip.classList.add('show');
+            animId = requestAnimationFrame(autoPlayLoop);
+        }
+
+        btnPlay.addEventListener('click', () => {
+            isPlaying = !isPlaying;
+            if (isPlaying) {
+                btnPlay.innerHTML = '⏸ หยุด (Pause)'; btnPlay.style.background = 'linear-gradient(135deg, #f59e0b, #d97706)'; autoPlayLoop();
+            } else {
+                btnPlay.innerHTML = '▶ เล่นอัตโนมัติ'; btnPlay.style.background = 'linear-gradient(135deg, #10b981, #059669)'; cancelAnimationFrame(animId); tooltip.classList.remove('show');
+            }
+        });
+
+        speedSlider.addEventListener('input', (e) => { speedVal.textContent = `${parseFloat(e.target.value).toFixed(1)}x`; });
+
+        function initAudio() {
+            const AudioContext = window.AudioContext || window.webkitAudioContext;
+            audioCtx = new AudioContext(); osc = audioCtx.createOscillator(); gainNode = audioCtx.createGain();
+            osc.type = 'sine'; gainNode.gain.value = 0; osc.connect(gainNode); gainNode.connect(audioCtx.destination); osc.start();
+        }
+
+        btnSound.addEventListener('click', () => {
+            isSoundOn = !isSoundOn;
+            if (isSoundOn) {
+                if (!audioCtx) initAudio(); if (audioCtx.state === 'suspended') audioCtx.resume();
+                btnSound.innerHTML = '🔊 ปิดเสียง'; btnSound.classList.add('btn-active'); btnSound.classList.remove('btn-sec');
+            } else {
+                if (gainNode) gainNode.gain.setTargetAtTime(0, audioCtx.currentTime, 0.1);
+                btnSound.innerHTML = '🔇 เสียง'; btnSound.classList.remove('btn-active'); btnSound.classList.add('btn-sec');
+            }
+            updateUI();
+        });
+
+        switchState(); // Initialize
+    </script>
+</body>
+</html>
