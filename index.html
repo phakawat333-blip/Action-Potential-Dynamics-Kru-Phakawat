@@ -158,7 +158,7 @@
 
     <div class="header">
         <h1>Action Potential Dynamics</h1>
-        <p class="subtitle">จำลองกฎ All-or-None และประเด็น SSI จากระบบจำลองสารพิษ (Neurotoxin Simulator)</p>
+        <p class="subtitle">จำลองกฎ All-or-None และประเด็น SSI จากระบบจำลองสารพิษ (Neurotoxin Simulator) พัฒนาสื่อการสอนโดย ครูภควัต สองเมือง (Kru Phakawat Songmuang) | Phakawat333@gmail.com </p>
     </div>
 
     <div class="container">
@@ -283,7 +283,7 @@
     </div>
 
     <div class="footer">
-        <p>พัฒนาสื่อการสอนโดย <b>ครูภควัต สองเมือง (Kru Phakawat Songmuang)</b> | Phakawat333@gmail.com</p>
+        <p>คำชี้แจง <b>ให้ศึกษาการเกิดกระแสประสาทว่ามีกระบวนการเป็นอย่างไร และหากมีสารพิษจะส่งผลต่อกระบวนการอย่างไร </b> จากนั้นจึงตอบคำถามเพื่ออภิปรายผล </p>
     </div>
 
     <script>
@@ -536,5 +536,412 @@
 
         switchState(); // Initialize
     </script>
+
+
+<style>
+        /* CSS สำหรับส่วนอภิปรายและแบบทดสอบ */
+        .eval-container {
+            width: 100%; max-width: 1000px; background: var(--panel-bg);
+            border-radius: 20px; padding: 25px; margin-top: 20px;
+            box-shadow: 0 15px 40px rgba(0,0,0,0.8); border: 1px solid #1e293b;
+        }
+        .eval-header {
+            font-size: 1.4rem; color: #38bdf8; margin-bottom: 20px; 
+            border-bottom: 1px solid #334155; padding-bottom: 10px; font-weight: 600;
+        }
+        .eval-header span { color: var(--accent); font-size: 0.9rem; margin-left: 10px; font-weight: 400;}
+        
+        .student-info {
+            display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; margin-bottom: 30px;
+            background: rgba(0,0,0,0.2); padding: 15px; border-radius: 12px; border: 1px solid #334155;
+        }
+        .input-group { display: flex; flex-direction: column; gap: 5px; }
+        .input-group label { font-size: 0.9rem; color: #cbd5e1; }
+        .input-group input {
+            background: #05080f; border: 1px solid #475569; color: white;
+            padding: 10px; border-radius: 8px; outline: none; transition: 0.3s;
+        }
+        .input-group input:focus { border-color: #38bdf8; box-shadow: 0 0 8px rgba(56,189,248,0.3); }
+
+        .question-card {
+            background: rgba(255,255,255,0.02); border: 1px solid rgba(255,255,255,0.05);
+            border-radius: 12px; padding: 20px; margin-bottom: 15px; transition: all 0.3s;
+        }
+        .question-text { font-weight: 500; margin-bottom: 15px; font-size: 1.05rem; color: #f8fafc; }
+        
+        .choice-grid { display: grid; gap: 10px; }
+        .choice-label {
+            display: block; padding: 12px 15px; background: #0f1624; border: 1px solid #1e293b;
+            border-radius: 8px; cursor: pointer; transition: 0.2s; font-size: 0.95rem; color: #cbd5e1;
+        }
+        .choice-label:hover { border-color: #38bdf8; background: rgba(56, 189, 248, 0.05); }
+        .choice-input { display: none; }
+        .choice-input:checked + .choice-label { background: rgba(56, 189, 248, 0.15); border-color: #38bdf8; color: #fff; }
+        
+        .feedback-msg { margin-top: 15px; font-size: 0.9rem; display: none; padding: 12px; border-radius: 8px; animation: fadeIn 0.3s ease; }
+        .feedback-error { background: rgba(239, 68, 68, 0.1); color: #fca5a5; border-left: 4px solid #ef4444; }
+        .feedback-success { background: rgba(16, 185, 129, 0.1); color: #6ee7b7; border-left: 4px solid #10b981; }
+
+        .btn-submit {
+            background: linear-gradient(135deg, #3b82f6, #2563eb); border: none; color: white;
+            padding: 15px 30px; border-radius: 8px; font-size: 1.1rem; font-weight: 600;
+            cursor: pointer; width: 100%; margin-top: 20px; transition: 0.3s;
+            box-shadow: 0 4px 15px rgba(59,130,246,0.3);
+        }
+        .btn-submit:hover { transform: translateY(-2px); box-shadow: 0 6px 20px rgba(59,130,246,0.5); }
+        .btn-submit:disabled { background: #475569; cursor: not-allowed; box-shadow: none; transform: none; }
+
+        .locked-question { display: none; opacity: 0; animation: fadeIn 0.5s ease forwards; }
+
+        /* ========================================= */
+        /* CSS สำหรับส่วน Dashboard สรุปผลตอนท้าย */
+        /* ========================================= */
+        .report-dashboard {
+            display: none; background: #0b1120; border: 2px solid #38bdf8;
+            border-radius: 16px; padding: 30px; margin-top: 30px;
+            box-shadow: 0 10px 40px rgba(56, 189, 248, 0.15);
+            animation: fadeIn 0.8s ease; width: 100%; max-width: 1000px;
+        }
+        .report-header { text-align: center; border-bottom: 1px dashed #334155; padding-bottom: 20px; margin-bottom: 20px; }
+        .report-header h2 { margin: 0; color: #38bdf8; font-size: 1.8rem; }
+        .report-student { display: flex; justify-content: center; gap: 15px; font-size: 1rem; color: #e2e8f0; margin-top: 15px; flex-wrap: wrap; }
+        .report-student span { background: rgba(255,255,255,0.05); padding: 8px 15px; border-radius: 8px; border: 1px solid #1e293b; display: flex; align-items: center; gap: 8px;}
+        .report-student span b { color: #94a3b8; }
+        
+        .report-score-area { text-align: center; margin: 20px 0; }
+        .report-score { font-size: 4.5rem; font-weight: bold; color: #10b981; line-height: 1; text-shadow: 0 0 20px rgba(16,185,129,0.4); margin-bottom: 10px;}
+        .report-msg { font-size: 1.15rem; color: #f8fafc; background: rgba(255,255,255,0.05); display: inline-block; padding: 10px 25px; border-radius: 30px;}
+        
+        .report-details-title { font-size: 1.1rem; color: #c084fc; border-bottom: 1px solid #334155; padding-bottom: 10px; margin-top: 30px; margin-bottom: 15px; font-weight: 500;}
+        
+        .rd-item {
+            background: rgba(0,0,0,0.3); border-radius: 10px; padding: 15px 20px; margin-bottom: 15px;
+            border-left: 5px solid #475569; position: relative;
+        }
+        .rd-item.correct { border-left-color: #10b981; background: rgba(16, 185, 129, 0.05); }
+        .rd-item.wrong { border-left-color: #ef4444; background: rgba(239, 68, 68, 0.05); }
+        
+        .rd-q { font-weight: 500; color: #f8fafc; margin-bottom: 10px; font-size: 1rem;}
+        .rd-ans { font-size: 0.95rem; margin-bottom: 8px; display: flex; gap: 8px; align-items: flex-start;}
+        .rd-exp { font-size: 0.9rem; color: #cbd5e1; background: rgba(0,0,0,0.2); padding: 10px 15px; border-radius: 8px; margin-top: 10px; line-height: 1.6;}
+        .rd-exp b { color: #fbbf24; }
+
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(-15px); } to { opacity: 1; transform: translateY(0); } }
+    </style>
+
+    <div id="assessment-area" style="width: 100%; display: flex; flex-direction: column; align-items: center;">
+        
+        <div class="eval-container" id="discussion-section">
+            <div class="eval-header">ตอนที่ 1: อภิปรายผลจากการจำลอง <span>(ตอบให้ถูกเพื่อทำข้อถัดไป)</span></div>
+            
+            <div class="student-info">
+                <div class="input-group">
+                    <label>ชื่อ - นามสกุล</label>
+                    <input type="text" id="std-name" placeholder="กรอกชื่อ-นามสกุล">
+                </div>
+                <div class="input-group">
+                    <label>ชั้น</label>
+                    <input type="text" id="std-class" placeholder="เช่น ม.6/2">
+                </div>
+                <div class="input-group">
+                    <label>เลขที่</label>
+                    <input type="number" id="std-no" placeholder="กรอกเลขที่">
+                </div>
+            </div>
+
+            <div id="discussion-questions"></div>
+        </div>
+
+        <div class="eval-container" id="quiz-section" style="display: none;">
+            <div class="eval-header" style="color: #c084fc;">ตอนที่ 2: แบบทดสอบความเข้าใจ (5 ข้อ) <span>(ประเมินผลรวม)</span></div>
+            <div id="quiz-questions"></div>
+            
+            <button class="btn-submit" id="btn-submit-quiz">ส่งคำตอบและดูรายงานผล</button>
+        </div>
+
+        <div class="report-dashboard" id="report-dashboard"></div>
+        
+    </div>
+
+    <script>
+        // ข้อมูลคำถามตอนที่ 1: อภิปรายผลจากการจำลอง (10 ข้อ)
+        const discussionData = [
+            {
+                q: "1. จากแบบจำลอง เมื่อเลือกกระตุ้นระดับ 'เบา (Sub)' เกิดอะไรขึ้นกับเยื่อหุ้มเซลล์?",
+                choices: ["ประตู Na+ เปิดเต็มที่ เกิด Action Potential", "ประตู Na+ แง้มเปิดเล็กน้อยแล้วปิด ไม่เกิด Action Potential", "ความต่างศักย์พุ่งขึ้นไปที่ +30 mV ทันที"],
+                ans: 1,
+                hint: "ลองปรับการกระตุ้นเป็น 'เบา (Sub)' แล้วสังเกตกราฟและช่อง Na+ ดูอีกครั้งนะ กราฟจะไม่ถึง Threshold!"
+            },
+            {
+                q: "2. ในระยะพัก (Resting State) ที่ยังไม่มีการกระตุ้น ความต่างศักย์อยู่ที่ประมาณเท่าใด?",
+                choices: ["-90 mV", "0 mV", "-70 mV"],
+                ans: 2,
+                hint: "ลองลากแถบเวลาไปที่ช่วงแรกสุดก่อนถูกกระตุ้นดูสิ ตัวเลขสีเหลืองบนหน้าปัดบอกว่าเท่าไหร่?"
+            },
+            {
+                q: "3. ในระยะ Depolarization (กราฟพุ่งขึ้น) ไอออนชนิดใดไหลเข้าสู่เซลล์อย่างรวดเร็ว?",
+                choices: ["โซเดียม (Na+)", "โพแทสเซียม (K+)", "แคลเซียม (Ca2+)"],
+                ans: 0,
+                hint: "ดูกราฟช่วงที่พุ่งขึ้น สังเกตอนุภาคสีฟ้าๆ (Na+) สิ มันกำลังเคลื่อนที่ไปทางไหน?"
+            },
+            {
+                q: "4. เมื่อกราฟขึ้นถึงจุดสูงสุด (ประมาณ +30 mV) กลไกใดเข้ามาหยุดยั้งการไหลเข้าของ Na+ ทันที?",
+                choices: ["ช่อง Na+ หดตัวเล็กลง", "ก้อน Inactivation Gate (สีแดง) ดีดขึ้นมาอุดกั้น", "ช่อง K+ ผลัก Na+ ออกไป"],
+                ans: 1,
+                hint: "ลองเลื่อนแถบเวลาไปที่จุด Peak สุดของกราฟ แล้วซูมดูที่ช่อง Na+ ด้านล่าง จะเห็นกลไกบางอย่างทำงาน!"
+            },
+            {
+                q: "5. การเกิดระยะ Repolarization (กราฟดิ่งลง) เป็นผลมาจากการทำงานของช่องใด?",
+                choices: ["ช่อง VG-K+ เปิดให้ K+ ไหลออกนอกเซลล์", "ช่อง VG-Na+ เปิดให้ Na+ ไหลออก", "Na+/K+ Pump ดึง K+ เข้าเซลล์อย่างรวดเร็ว"],
+                ans: 0,
+                hint: "ดูกราฟขาลง สังเกตช่องสีเขียว (VG-K+) ว่ามันเปิดหรือปิด และอนุภาคสีเขียวเคลื่อนที่อย่างไร?"
+            },
+            {
+                q: "6. ทำไมช่วงท้ายของกราฟจึงเกิดระยะ Undershoot (Hyperpolarization) ที่ศักย์ไฟฟ้าดิ่งลึกกว่า -70 mV?",
+                choices: ["เพราะ Na+/K+ Pump ทำงานหนักเกินไป", "เพราะช่อง VG-K+ ปิดช้า ทำให้ K+ ไหลออกมากเกินไป", "เพราะประตู Na+ แตกแตก"],
+                ans: 1,
+                hint: "ลองดูคำอธิบายตรงกล่องด้านล่างกราฟตอนที่กราฟตกลงไปแถวๆ -90 mV ดูสิ ว่าเกี่ยวกับช่องไหนที่ปิดช้า?"
+            },
+            {
+                q: "7. เมื่อเซลล์ประสาทได้รับพิษปลาปักเป้า (TTX) ลักษณะกราฟจะเปลี่ยนไปอย่างไร?",
+                choices: ["กราฟราบเรียบ ไม่เกิด Action Potential เลย", "กราฟค้างอยู่ด้านบน ไม่ยอมตกลงมา", "เกิด Action Potential ถี่ขึ้น"],
+                ans: 0,
+                hint: "ลองเลือกสารพิษ 'TTX' แล้วกดเล่นจำลองดูสิ สังเกตบล็อกเกอร์สีเหลืองที่เข้าไปอุดช่อง Na+ ทำให้เกิดอะไรขึ้น?"
+            },
+            {
+                q: "8. พิษ TTX เข้าไปขัดขวางกลไกใด ทำให้เกิดสภาวะอัมพาต?",
+                choices: ["อุดช่อง K+ ทำให้กลับสู่ระยะพักไม่ได้", "ทำลายไขมันที่เยื่อหุ้มเซลล์", "อุดช่อง Na+ จากด้านนอก ไม่ให้ Na+ ไหลเข้าเมื่อถูกกระตุ้น"],
+                ans: 2,
+                hint: "อ่านคำอธิบายในกรอบตอนที่เลือก TTX ดูครับ มันอุดช่องไหนจากทิศทางไหน?"
+            },
+            {
+                q: "9. สาร TEA (Tetraethylammonium) ก่อให้เกิดความผิดปกติในระยะใดชัดเจนที่สุด?",
+                choices: ["Depolarization", "Repolarization (กราฟไม่ยอมตกกลับสู่สมดุล)", "Resting State"],
+                ans: 1,
+                hint: "ลองเปลี่ยนไปเลือก TEA แล้วกระตุ้นแบบแรงดู กราฟจะค้างอยู่ด้านบน เพราะมันบล็อคช่องอะไรไม่ให้ทำงาน?"
+            },
+            {
+                q: "10. ยาชาเฉพาะที่ (Lidocaine) มีกลไกการออกฤทธิ์คล้ายและต่างจาก TTX อย่างไร?",
+                choices: ["บล็อคช่อง Na+ เหมือนกัน แต่ยาชาเข้าไปอุดจาก 'ด้านในเซลล์'", "บล็อคช่อง K+ เหมือนกัน แต่อุดคนละด้าน", "ยาชาทำลาย Na+/K+ Pump แต่ TTX ทำลายช่อง Leak"],
+                ans: 0,
+                hint: "ลองเลือก ยาชาเฉพาะที่ (LA) แล้วสังเกตตำแหน่งของบล็อกเกอร์สีม่วงเปรียบเทียบกับสีเหลืองของ TTX ดูครับ!"
+            }
+        ];
+
+        // ข้อมูลคำถามตอนที่ 2: แบบทดสอบ (5 ข้อ) พร้อมเหตุผล
+        const quizData = [
+            {
+                q: "1. กฎ All-or-None (กฎทั้งหมดหรือศูนย์) ในการเกิด Action Potential หมายถึงข้อใด?",
+                choices: [
+                    "เซลล์ประสาทจะส่งสัญญาณได้แค่ 1 ครั้งต่อวินาทีเท่านั้น",
+                    "หากกระตุ้นถึงระดับ Threshold จะเกิด Action Potential เต็มรูปแบบเสมอ หากไม่ถึงจะไม่เกิดเลย",
+                    "โซเดียมและโพแทสเซียมต้องเข้าและออกเซลล์พร้อมกันในปริมาณที่เท่ากันเสมอ"
+                ],
+                ans: 1,
+                explanation: "กฎ All-or-None ระบุว่า ถ้าการกระตุ้นแรงพอที่จะทำให้ความต่างศักย์ถึงระดับ <b>Threshold (-55 mV)</b> ประตูโซเดียมจะเปิดเต็มที่และทำให้เกิด Action Potential จนถึงค่าสูงสุดเสมอ (+30 mV) แต่ถ้ากระตุ้นเบาเกินไป (Sub-threshold) จะไม่เกิด Action Potential เลย"
+            },
+            {
+                q: "2. โครงสร้างใดที่เปรียบเสมือน 'ตัวล็อกฉุกเฉิน' ที่ป้องกันไม่ให้ Action Potential ย้อนกลับทิศทาง (Refractory period)?",
+                choices: [
+                    "Na+/K+ Pump",
+                    "Leak Channels",
+                    "Inactivation Gate ของช่อง Voltage-gated Na+"
+                ],
+                ans: 2,
+                explanation: "<b>Inactivation Gate (ลูกบอลสีแดง)</b> จะดีดตัวเข้ามาอุดกั้นช่อง Na+ ทันทีที่กราฟถึงจุด Peak ทำให้เกิดระยะดื้อ (Refractory Period) ที่เซลล์ประสาทไม่สามารถถูกกระตุ้นซ้ำได้อีกในช่วงนี้ กระแสประสาทจึงพุ่งไปทิศทางเดียวเสมอ"
+            },
+            {
+                q: "3. ในการรักษาสมดุลของเซลล์ประสาทให้กลับมาพร้อมใช้งาน (Resting state) ตลอดเวลา กลไกใดที่ต้อง 'ใช้พลังงาน ATP' ขับเคลื่อน?",
+                choices: [
+                    "Na+ Leak Channel",
+                    "Voltage-gated K+ Channel",
+                    "Na+/K+ Pump"
+                ],
+                ans: 2,
+                explanation: "<b>Na+/K+ Pump</b> เป็นกลไก Active Transport ที่ต้องใช้พลังงาน (ATP) ดัน 3 Na+ ออกนอกเซลล์ และดึง 2 K+ กลับเข้าเซลล์ เพื่อรักษาความต่างศักย์ระยะพักให้คงที่ -70 mV"
+            },
+            {
+                q: "4. หากสิ่งมีชีวิตสัมผัสสารพิษที่ยับยั้งการทำงานของช่อง Voltage-gated K+ โดยสมบูรณ์ จะเกิดปรากฏการณ์ใดขึ้นกับเซลล์ประสาท?",
+                choices: [
+                    "ไม่สามารถเกิดการ Depolarization ได้เลย",
+                    "เซลล์ค้างอยู่ในสภาวะถูกกระตุ้น (ไม่สามารถ Repolarization ได้)",
+                    "เซลล์จะเกิด Hyperpolarization ตลอดเวลา"
+                ],
+                ans: 1,
+                explanation: "เมื่อช่อง Voltage-gated K+ ถูกยับยั้ง (เช่น สาร TEA) โพแทสเซียมจะไม่สามารถไหลออกจากเซลล์ได้ <b>เซลล์ประสาทจึงไม่สามารถเข้าสู่ระยะ Repolarization</b> ได้ กราฟจะค้างอยู่ในค่าบวก และระบบประสาทจะล้มเหลว"
+            },
+            {
+                q: "5. ข้อใดสรุปการทำงานร่วมกันของไอออนในการเกิดกระแสประสาท (Action Potential) ได้ถูกต้องที่สุด?",
+                choices: [
+                    "Na+ เข้าเซลล์ทำให้กราฟพุ่งขึ้น -> K+ ออกเซลล์ทำให้กราฟตกลง -> Pump ปรับสมดุล",
+                    "K+ เข้าเซลล์ทำให้กราฟพุ่งขึ้น -> Na+ ออกเซลล์ทำให้กราฟตกลง -> Leak ปรับสมดุล",
+                    "Na+ และ K+ ไหลเข้าพร้อมกันเพื่อให้กราฟพุ่งขึ้น -> Pump ดันออกพร้อมกันให้กราฟตก"
+                ],
+                ans: 0,
+                explanation: "<b>Depolarization:</b> Na+ ทะลักเข้าเซลล์ (กราฟพุ่ง) <br><b>Repolarization:</b> K+ ทะลักออกเซลล์ (กราฟดิ่งลง) <br><b>Resting State:</b> Na+/K+ Pump ทำงานต่อเนื่องเพื่อปรับสมดุลรอการกระตุ้นครั้งต่อไป"
+            }
+        ];
+
+        // เรนเดอร์ตอนที่ 1
+        const discContainer = document.getElementById('discussion-questions');
+        discussionData.forEach((item, index) => {
+            let hiddenClass = index === 0 ? '' : 'locked-question';
+            let html = `
+                <div class="question-card ${hiddenClass}" id="disc-card-${index}">
+                    <div class="question-text">${item.q}</div>
+                    <div class="choice-grid">
+            `;
+            item.choices.forEach((choice, cIndex) => {
+                html += `
+                    <label>
+                        <input type="radio" name="disc_q${index}" class="choice-input" value="${cIndex}">
+                        <div class="choice-label">${choice}</div>
+                    </label>
+                `;
+            });
+            html += `</div><div class="feedback-msg" id="feedback-${index}"></div></div>`;
+            discContainer.innerHTML += html;
+        });
+
+        // จัดการเหตุการณ์ตอนที่ 1
+        discussionData.forEach((item, index) => {
+            const radios = document.querySelectorAll(`input[name="disc_q${index}"]`);
+            const feedbackBox = document.getElementById(`feedback-${index}`);
+            radios.forEach(radio => {
+                radio.addEventListener('change', (e) => {
+                    let val = parseInt(e.target.value);
+                    feedbackBox.style.display = 'block';
+                    
+                    if(val === item.ans) {
+                        feedbackBox.className = 'feedback-msg feedback-success';
+                        feedbackBox.innerHTML = '✅ <b>ถูกต้องเยี่ยมมาก!</b>';
+                        radios.forEach(r => r.disabled = true);
+                        
+                        const nextCard = document.getElementById(`disc-card-${index + 1}`);
+                        if (nextCard) {
+                            nextCard.classList.remove('locked-question');
+                            nextCard.style.display = 'block';
+                            nextCard.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                        } else {
+                            feedbackBox.innerHTML += '<br>🎉 <b>ตอบถูกครบทุกข้อแล้ว! เลื่อนลงไปทำแบบทดสอบตอนที่ 2 ได้เลยครับ</b>';
+                            const quizSection = document.getElementById('quiz-section');
+                            quizSection.style.display = 'block';
+                            setTimeout(() => { quizSection.scrollIntoView({ behavior: 'smooth', block: 'start' }); }, 500);
+                        }
+                    } else {
+                        feedbackBox.className = 'feedback-msg feedback-error';
+                        feedbackBox.innerHTML = `❌ <b>ยังไม่ถูกต้องครับ</b><br>💡 <i>คำแนะนำ: ${item.hint}</i> ลองกลับไปจำลองใหม่อีกครั้งนะ!`;
+                    }
+                });
+            });
+        });
+
+        // เรนเดอร์ตอนที่ 2 (ไม่มีเฉลยตรงนี้ จะไปออกที่ Dashboard แทน)
+        const quizContainer = document.getElementById('quiz-questions');
+        quizData.forEach((item, index) => {
+            let html = `
+                <div class="question-card" id="quiz-card-${index}">
+                    <div class="question-text">${item.q}</div>
+                    <div class="choice-grid">
+            `;
+            item.choices.forEach((choice, cIndex) => {
+                html += `
+                    <label>
+                        <input type="radio" name="quiz_q${index}" class="choice-input" value="${cIndex}">
+                        <div class="choice-label" id="lbl-q${index}-c${cIndex}">${choice}</div>
+                    </label>
+                `;
+            });
+            html += `</div></div>`;
+            quizContainer.innerHTML += html;
+        });
+
+        // สร้าง Dashboard
+        const btnSubmit = document.getElementById('btn-submit-quiz');
+        const reportDashboard = document.getElementById('report-dashboard');
+
+        btnSubmit.addEventListener('click', () => {
+            let name = document.getElementById('std-name').value.trim();
+            let stdClass = document.getElementById('std-class').value.trim() || '-';
+            let stdNo = document.getElementById('std-no').value.trim() || '-';
+
+            if(!name) { alert("กรุณากรอกข้อมูล ชื่อ-นามสกุล ก่อนส่งคำตอบครับ"); return; }
+            
+            let score = 0;
+            let allAnswered = true;
+            let reportDetailsHTML = '';
+
+            // ตรวจสอบว่าตอบครบไหม
+            quizData.forEach((item, index) => {
+                if(!document.querySelector(`input[name="quiz_q${index}"]:checked`)) allAnswered = false;
+            });
+
+            if(!allAnswered) { alert("กรุณาตอบแบบทดสอบให้ครบทั้ง 5 ข้อครับ"); return; }
+
+            // ประมวลผลและสร้างเนื้อหาใน Dashboard
+            quizData.forEach((item, index) => {
+                const selectedVal = parseInt(document.querySelector(`input[name="quiz_q${index}"]:checked`).value);
+                const isCorrect = selectedVal === item.ans;
+                if(isCorrect) score++;
+
+                // ล็อคอินพุต
+                document.querySelectorAll(`input[name="quiz_q${index}"]`).forEach(r => r.disabled = true);
+
+                let statusIcon = isCorrect ? '✅' : '❌';
+                let statusClass = isCorrect ? 'correct' : 'wrong';
+                let userAnswerText = item.choices[selectedVal];
+                let correctAnswerText = item.choices[item.ans];
+
+                reportDetailsHTML += `
+                    <div class="rd-item ${statusClass}">
+                        <div class="rd-q">${item.q}</div>
+                        ${!isCorrect ? `<div class="rd-ans" style="color: #fca5a5;"><span>❌ <b>ตอบ:</b></span> <span>${userAnswerText}</span></div>` : ''}
+                        <div class="rd-ans" style="color: #6ee7b7;"><span>✅ <b>เฉลย:</b></span> <span>${correctAnswerText}</span></div>
+                        <div class="rd-exp">💡 <b>คำอธิบาย:</b> ${item.explanation}</div>
+                    </div>
+                `;
+            });
+
+            // ข้อความให้กำลังใจ
+            let encourageMsg = '';
+            if(score === 5) {
+                encourageMsg = `ยอดเยี่ยมมากครับ! คุณเข้าใจกลไกนี้อย่างสมบูรณ์แบบ แคปเจอร์หน้าจอนี้ส่งครูภควัตได้เลย 🌟`;
+            } else if (score >= 3) {
+                encourageMsg = `ทำได้ดีเลยทีเดียว! ทบทวนข้อที่ผิดอีกนิดก็เป๊ะแล้ว แคปเจอร์หน้าจอนี้ส่งครูภควัตได้เลย 👍`;
+            } else {
+                encourageMsg = `พยายามได้ดีครับ! ค่อยๆ อ่านเฉลยทบทวนนะ แคปเจอร์หน้าจอนี้ส่งครูภควัตได้เลย เป็นกำลังใจให้ครับ ✌️`;
+            }
+
+            // นำข้อมูลประกอบเข้า Dashboard
+            reportDashboard.innerHTML = `
+                <div class="report-header">
+                    <h2>📝 รายงานผลการเรียนรู้ (Action Potential)</h2>
+                    <div class="report-student">
+                        <span><b>👤 ชื่อ:</b> ${name}</span>
+                        <span><b>🏫 ชั้น:</b> ${stdClass}</span>
+                        <span><b>🔢 เลขที่:</b> ${stdNo}</span>
+                    </div>
+                </div>
+                
+                <div class="report-score-area">
+                    <div style="color: #94a3b8; font-size: 1.2rem; margin-bottom: 5px;">คะแนนรวม</div>
+                    <div class="report-score">${score} / 5</div>
+                    <div class="report-msg">${encourageMsg}</div>
+                </div>
+
+                <div class="report-details-title">🔍 เฉลยและคำอธิบายโดยละเอียด:</div>
+                ${reportDetailsHTML}
+            `;
+
+            // ซ่อนปุ่มส่งคำตอบ แสดง Dashboard และเลื่อนไปให้เห็นชัดๆ
+            btnSubmit.style.display = 'none';
+            reportDashboard.style.display = 'block';
+            setTimeout(() => {
+                reportDashboard.scrollIntoView({behavior: 'smooth', block: 'start'});
+            }, 300);
+        });
+    </script>
+    ```
+
 </body>
 </html>
